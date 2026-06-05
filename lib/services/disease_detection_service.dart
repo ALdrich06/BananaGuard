@@ -73,64 +73,64 @@ class DiseaseDetectionService {
   }
 
   Map<String, dynamic> _classifyDisease(Map<String, double> colorAnalysis) {
-    final random = Random();
     String diseaseName;
-    double baseConfidence;
+    double confidence;
     String severity;
 
-    if (colorAnalysis['black']! > 0.15 || colorAnalysis['dark']! > 0.25) {
+    final blackRatio = colorAnalysis['black']!;
+    final darkRatio = colorAnalysis['dark']!;
+    final yellowRatio = colorAnalysis['yellow']!;
+    final brownRatio = colorAnalysis['brown']!;
+    final greenRatio = colorAnalysis['green']!;
+    final whiteRatio = colorAnalysis['white']!;
+
+    if (blackRatio > 0.20 || (blackRatio > 0.12 && darkRatio > 0.30)) {
       diseaseName = 'Black Sigatoka';
-      baseConfidence = 0.85 + random.nextDouble() * 0.10;
-      severity = 'High';
-    } else if (colorAnalysis['yellow']! > 0.20) {
+      confidence = min(0.95, 0.75 + (blackRatio * 1.2) + (darkRatio * 0.5));
+      severity = blackRatio > 0.25 ? 'Critical' : 'High';
+    } else if (yellowRatio > 0.25 && brownRatio < 0.15) {
       diseaseName = 'Yellow Sigatoka';
-      baseConfidence = 0.80 + random.nextDouble() * 0.12;
+      confidence = min(0.93, 0.70 + (yellowRatio * 1.0));
+      severity = yellowRatio > 0.35 ? 'High' : 'Medium';
+    } else if (brownRatio > 0.30 && darkRatio > 0.20 && greenRatio < 0.25) {
+      diseaseName = 'Panama Disease';
+      confidence = min(0.92, 0.72 + (brownRatio * 0.8) + (darkRatio * 0.4));
+      severity = 'Critical';
+    } else if (brownRatio > 0.25 && yellowRatio > 0.15 && blackRatio < 0.10) {
+      diseaseName = 'Banana Anthracnose';
+      confidence = min(0.90, 0.68 + (brownRatio * 0.9));
       severity = 'Medium';
-    } else if (colorAnalysis['brown']! > 0.25 && colorAnalysis['dark']! > 0.15) {
-      final diseases = [
-        {'name': 'Panama Disease', 'severity': 'Critical', 'conf': 0.75},
-        {'name': 'Cordana Leaf Spot', 'severity': 'Low', 'conf': 0.78},
-        {'name': 'Banana Anthracnose', 'severity': 'Medium', 'conf': 0.80},
-      ];
-      final selected = diseases[random.nextInt(diseases.length)];
-      diseaseName = selected['name'] as String;
-      severity = selected['severity'] as String;
-      baseConfidence = (selected['conf'] as double) + random.nextDouble() * 0.12;
-    } else if (colorAnalysis['brown']! > 0.15) {
-      final diseases = [
-        {'name': 'Cigar End Rot', 'severity': 'Low', 'conf': 0.76},
-        {'name': 'Crown Rot', 'severity': 'High', 'conf': 0.82},
-        {'name': 'Banana Tip Burn', 'severity': 'Low', 'conf': 0.74},
-      ];
-      final selected = diseases[random.nextInt(diseases.length)];
-      diseaseName = selected['name'] as String;
-      severity = selected['severity'] as String;
-      baseConfidence = (selected['conf'] as double) + random.nextDouble() * 0.10;
-    } else if (colorAnalysis['yellow']! > 0.10 && colorAnalysis['green']! > 0.30) {
-      final diseases = [
-        {'name': 'Banana Streak Virus', 'severity': 'Medium', 'conf': 0.77},
-        {'name': 'Banana Bunchy Top Virus', 'severity': 'Critical', 'conf': 0.79},
-      ];
-      final selected = diseases[random.nextInt(diseases.length)];
-      diseaseName = selected['name'] as String;
-      severity = selected['severity'] as String;
-      baseConfidence = (selected['conf'] as double) + random.nextDouble() * 0.10;
-    } else if (colorAnalysis['green']! > 0.40) {
+    } else if (brownRatio > 0.20 && whiteRatio > 0.10 && darkRatio > 0.15) {
+      diseaseName = 'Cordana Leaf Spot';
+      confidence = min(0.88, 0.65 + (brownRatio * 0.7) + (whiteRatio * 0.5));
+      severity = brownRatio > 0.30 ? 'Medium' : 'Low';
+    } else if (brownRatio > 0.18 && darkRatio > 0.12 && greenRatio > 0.20) {
+      diseaseName = 'Cigar End Rot';
+      confidence = min(0.87, 0.64 + (brownRatio * 0.8));
+      severity = 'Low';
+    } else if (darkRatio > 0.25 && brownRatio > 0.15 && blackRatio > 0.08) {
+      diseaseName = 'Crown Rot';
+      confidence = min(0.91, 0.70 + (darkRatio * 0.7) + (brownRatio * 0.5));
+      severity = 'High';
+    } else if (yellowRatio > 0.15 && greenRatio > 0.35 && brownRatio < 0.12) {
+      diseaseName = 'Banana Streak Virus';
+      confidence = min(0.89, 0.66 + (yellowRatio * 0.8) + (greenRatio * 0.3));
+      severity = 'Medium';
+    } else if (darkRatio > 0.30 && brownRatio > 0.20 && greenRatio < 0.20) {
+      diseaseName = 'Moko Disease';
+      confidence = min(0.90, 0.68 + (darkRatio * 0.6) + (brownRatio * 0.6));
+      severity = 'Critical';
+    } else if (greenRatio > 0.50 && brownRatio < 0.10 && blackRatio < 0.05) {
       diseaseName = 'Healthy';
-      baseConfidence = 0.90 + random.nextDouble() * 0.08;
+      confidence = min(0.96, 0.80 + (greenRatio * 0.3));
       severity = 'None';
     } else {
-      final diseases = [
-        {'name': 'Moko Disease', 'severity': 'Critical', 'conf': 0.73},
-        {'name': 'Cordana Leaf Spot', 'severity': 'Low', 'conf': 0.76},
-      ];
-      final selected = diseases[random.nextInt(diseases.length)];
-      diseaseName = selected['name'] as String;
-      severity = selected['severity'] as String;
-      baseConfidence = (selected['conf'] as double) + random.nextDouble() * 0.12;
+      diseaseName = 'Cordana Leaf Spot';
+      confidence = 0.72;
+      severity = 'Low';
     }
 
-    final confidence = min(0.98, max(0.70, baseConfidence));
+    confidence = max(0.65, min(0.96, confidence));
 
     final diseaseInfo = diseaseDatabase.firstWhere(
       (d) => d.name == diseaseName,
