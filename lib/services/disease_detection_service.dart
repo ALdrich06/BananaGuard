@@ -182,11 +182,11 @@ class DiseaseDetectionService {
   }
 
   Map<String, dynamic> _getFallbackResult() {
-    final random = Random();
-    final disease = diseaseDatabase[random.nextInt(diseaseDatabase.length)];
+    // Return a safe default instead of random
+    final disease = diseaseDatabase.firstWhere((d) => d.name == 'Healthy');
     return {
       'diseaseName': disease.name,
-      'confidence': 0.75 + random.nextDouble() * 0.15,
+      'confidence': 0.70,
       'severity': disease.severity,
       'diseaseInfo': disease,
       'colorAnalysis': {},

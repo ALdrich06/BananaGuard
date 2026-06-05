@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../models/scan_result.dart';
+import '../services/database_service.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -17,6 +18,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String _searchQuery = '';
   String _filter = 'All';
   final List<String> _filters = ['All', 'Diseased', 'Healthy', 'Critical'];
+  List<ScanResult> _allHistory = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
   @override
   void dispose() {
@@ -24,8 +33,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
     super.dispose();
   }
 
+  Future<void> _loadHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final history = await DatabaseService.instance.getAllScans();
+      setState(() {
+        _allHistory = history;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading history: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   List<ScanResult> get _filteredHistory {
-    return _mockHistory.where((r) {
+    return _allHistory.where((r) {
       final matchesSearch = r.diseaseName.toLowerCase().contains(_searchQuery.toLowerCase());
       final matchesFilter = _filter == 'All'
           ? true
@@ -37,37 +60,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return matchesSearch && matchesFilter;
     }).toList();
   }
-
-  final List<ScanResult> _mockHistory = [
-    ScanResult(
-      diseaseName: 'Black Sigatoka',
-      confidence: 0.91,
-      imagePath: '',
-      dateScanned: DateTime.now().subtract(const Duration(days: 1)),
-      severity: 'High',
-    ),
-    ScanResult(
-      diseaseName: 'Healthy',
-      confidence: 0.97,
-      imagePath: '',
-      dateScanned: DateTime.now().subtract(const Duration(days: 3)),
-      severity: 'None',
-    ),
-    ScanResult(
-      diseaseName: 'Yellow Sigatoka',
-      confidence: 0.85,
-      imagePath: '',
-      dateScanned: DateTime.now().subtract(const Duration(days: 5)),
-      severity: 'Medium',
-    ),
-    ScanResult(
-      diseaseName: 'Panama Disease',
-      confidence: 0.78,
-      imagePath: '',
-      dateScanned: DateTime.now().subtract(const Duration(days: 7)),
-      severity: 'Critical',
-    ),
-  ];
 
   Color _severityColor(String severity) {
     switch (severity) {
@@ -92,29 +84,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadHistory,
+          ),
+          IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.white),
             onPressed: () => _confirmClear(context),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildSearchAndFilter(),
-          _buildSummaryBar(),
-          Expanded(
-            child: filtered.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    itemCount: filtered.length,
-                    itemBuilder: (ctx, i) => _HistoryCard(
-                      result: filtered[i],
-                      severityColor: _severityColor(filtered[i].severity),
-                    ).animate(delay: (i * 70).ms).fadeIn().slideX(begin: 0.1, end: 0),
-                  ),
-          ),
-        ],
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildSearchAndFilter(),
+                _buildSummaryBar(),
+                Expanded(
+                  child: filtered.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          itemCount: filtered.length,
+                          itemBuilder: (ctx, i) => _HistoryCard(
+                            result: filtered[i],
+                            severityColor: _severityColor(filtered[i].severity),
+                          ).animate(delay: (i * 70).ms).fadeIn().slideX(begin: 0.1, end: 0),
+                        ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -165,15 +163,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildSummaryBar() {
-    final diseaseCount = _mockHistory.where((r) => r.diseaseName != 'Healthy').length;
-    final healthyCount = _mockHistory.where((r) => r.diseaseName == 'Healthy').length;
+    final diseaseCount = _allHistory.where((r) => r.diseaseName != 'Healthy').length;
+    final healthyCount = _allHistory.where((r) => r.diseaseName == 'Healthy').length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       color: AppTheme.background,
       child: Row(
         children: [
-          _SummaryChip(label: 'Total', value: '${_mockHistory.length}', color: AppTheme.primary),
+          _SummaryChip(label: 'Total', value: '${_allHistory.length}', color: AppTheme.primary),
           const SizedBox(width: 10),
           _SummaryChip(label: 'Diseased', value: '$diseaseCount', color: Colors.orange),
           const SizedBox(width: 10),
@@ -219,9 +217,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
-              setState(() => _mockHistory.clear());
+            onPressed: () async {
+              await DatabaseService.instance.clearAllScans();
               Navigator.pop(context);
+              _loadHistory();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete All'),

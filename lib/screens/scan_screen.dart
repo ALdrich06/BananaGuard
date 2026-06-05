@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../models/scan_result.dart';
 import '../services/disease_detection_service.dart';
+import '../services/database_service.dart';
 import 'result_screen.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -66,6 +67,9 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
         dateScanned: DateTime.now(),
         severity: analysisResult['severity'],
       );
+      
+      // Save to database
+      await DatabaseService.instance.insertScan(result);
       
       if (mounted) {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ResultScreen(result: result)));
