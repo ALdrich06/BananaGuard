@@ -35,23 +35,53 @@ class DiseaseDetectionService {
     int greenPixels = 0;
     int blackPixels = 0;
     int whitePixels = 0;
+    int spotCount = 0;
+    int edgePixels = 0;
 
-    for (int y = 0; y < image.height; y++) {
-      for (int x = 0; x < image.width; x++) {
-        final pixel = image.getPixel(x, y);
+    // Resize for faster processing
+    final resized = img.copyResize(image, width: 300);
+    
+    for (int y = 1; y < resized.height - 1; y++) {
+      for (int x = 1; x < resized.width - 1; x++) {
+        final pixel = resized.getPixel(x, y);
         final r = pixel.r.toInt();
         final g = pixel.g.toInt();
         final b = pixel.b.toInt();
 
         totalPixels++;
 
+        // Enhanced color classification
         final brightness = (r + g + b) / 3;
-        final isGreen = g > r && g > b;
-        final isYellow = r > 150 && g > 150 && b < 100;
-        final isBrown = r > 100 && r < 180 && g > 60 && g < 140 && b < 100;
-        final isDark = brightness < 80;
-        final isBlack = r < 50 && g < 50 && b < 50;
-        final isWhite = r > 200 && g > 200 && b > 200;
+        final saturation = (max(max(r, g), b) - min(min(r, g), b)) / 255.0;
+        
+        // Detect spots (sudden color changes)
+        final neighbors = [
+          resized.getPixel(x-1, y),
+          resized.getPixel(x+1, y),
+          resized.getPixel(x, y-1),
+          resized.getPixel(x, y+1),
+        ];
+        
+        var colorDiff = 0.0;
+        for (var neighbor in neighbors) {
+          final nr = neighbor.r.toInt();
+          final ng = neighbor.g.toInt();
+          final nb = neighbor.b.toInt();
+          colorDiff += ((r - nr).abs() + (g - ng).abs() + (b - nb).abs()) / 3;
+        }
+        
+        if (colorDiff > 80) {
+          edgePixels++;
+          if (brightness < 100) spotCount++;
+        }
+
+        // Improved color detection
+        final isGreen = g > r + 20 && g > b + 20 && saturation > 0.2;
+        final isYellow = r > 180 && g > 180 && b < 120 && saturation > 0.3;
+        final isBrown = r > 80 && r < 200 && g > 50 && g < 150 && b < 120 && saturation > 0.2;
+        final isDark = brightness < 90 && saturation > 0.1;
+        final isBlack = r < 60 && g < 60 && b < 60;
+        final isWhite = r > 200 && g > 200 && b > 200 && saturation < 0.15;
 
         if (isBlack) blackPixels++;
         else if (isDark) darkPixels++;
@@ -69,6 +99,8 @@ class DiseaseDetectionService {
       'green': greenPixels / totalPixels,
       'black': blackPixels / totalPixels,
       'white': whitePixels / totalPixels,
+      'spots': spotCount / totalPixels,
+      'edges': edgePixels / totalPixels,
     };
   }
 
@@ -83,8 +115,11 @@ class DiseaseDetectionService {
     final brownRatio = colorAnalysis['brown']!;
     final greenRatio = colorAnalysis['green']!;
     final whiteRatio = colorAnalysis['white']!;
+    final spotRatio = colorAnalysis['spots'] ?? 0.0;
+    final edgeRatio = colorAnalysis['edges'] ?? 0.0;
 
-    if (blackRatio > 0.20 || (blackRatio > 0.12 && darkRatio > 0.30)) {
+    // Enhanced detection using spots and edges
+    if ((blackRatio > 0.15 && spotRatio > 0.08) || (blackRatio > 0.12 && darkRatio > 0.30 && edgeRatio > 0.15)) {
       diseaseName = 'Black Sigatoka';
       confidence = min(0.95, 0.75 + (blackRatio * 1.2) + (darkRatio * 0.5));
       severity = blackRatio > 0.25 ? 'Critical' : 'High';
