@@ -24,6 +24,11 @@ jobs:
         flutter-version: '3.19.0'
         channel: 'stable'
     
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        echo "flutter.sdk=$FLUTTER_ROOT" >> android/local.properties
+    
     - name: Fix CardTheme issue
       run: |
         sed -i 's/CardThemeData(/CardTheme(/g' lib/theme/app_theme.dart || true
