@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:math';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../models/scan_result.dart';
+import '../services/disease_detection_service.dart';
 import 'result_screen.dart';
 
 class ScanScreen extends StatefulWidget {
@@ -15,6 +18,8 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateMixin {
   int _step = 0; // 0=select, 1=preview, 2=analyzing
   late AnimationController _scanAnimController;
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
 
   @override
   void initState() {
@@ -29,22 +34,50 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  void _pickImage() => setState(() => _step = 1);
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(source: source);
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+          _step = 1;
+        });
+        // Auto-analyze after selection
+        await Future.delayed(const Duration(milliseconds: 500));
+        _analyzeImage();
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+    }
+  }
 
   Future<void> _analyzeImage() async {
+    if (_selectedImage == null) return;
+    
     setState(() => _step = 2);
-    await Future.delayed(const Duration(seconds: 3));
-    final rand = Random();
-    final picked = diseaseDatabase[rand.nextInt(diseaseDatabase.length)];
-    final result = ScanResult(
-      diseaseName: picked.name,
-      confidence: 0.70 + rand.nextDouble() * 0.28,
-      imagePath: '',
-      dateScanned: DateTime.now(),
-      severity: picked.severity,
-    );
-    if (mounted) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ResultScreen(result: result)));
+    
+    try {
+      final analysisResult = await DiseaseDetectionService.instance.analyzeImage(_selectedImage!.path);
+      
+      final result = ScanResult(
+        diseaseName: analysisResult['diseaseName'],
+        confidence: analysisResult['confidence'],
+        imagePath: _selectedImage!.path,
+        dateScanned: DateTime.now(),
+        severity: analysisResult['severity'],
+      );
+      
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ResultScreen(result: result)));
+      }
+    } catch (e) {
+      print('Error analyzing image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error analyzing image: $e')),
+        );
+        setState(() => _step = 1);
+      }
     }
   }
 
@@ -167,17 +200,20 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   Widget _buildPreviewState() {
     return Stack(
       children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade900, Colors.green.shade700, Colors.green.shade500],
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
+        if (_selectedImage != null)
+          Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+        else
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade900, Colors.green.shade700, Colors.green.shade500],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Center(
+              child: Icon(Icons.eco, size: 100, color: Colors.white24),
             ),
           ),
-          child: const Center(
-            child: Icon(Icons.eco, size: 100, color: Colors.white24),
-          ),
-        ),
         Positioned(
           bottom: 12, left: 12, right: 12,
           child: Container(
@@ -191,7 +227,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
               children: [
                 Icon(Icons.check_circle, color: Color(0xFF69F0AE), size: 16),
                 SizedBox(width: 6),
-                Text('Image ready for analysis', style: TextStyle(color: Colors.white, fontSize: 12)),
+                Text('Analyzing...', style: TextStyle(color: Colors.white, fontSize: 12)),
               ],
             ),
           ),
@@ -203,15 +239,18 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   Widget _buildScanningState() {
     return Stack(
       children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade900, Colors.green.shade700],
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
+        if (_selectedImage != null)
+          Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity, height: double.infinity)
+        else
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade900, Colors.green.shade700],
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+              ),
             ),
+            child: const Center(child: Icon(Icons.eco, size: 100, color: Colors.white24)),
           ),
-          child: const Center(child: Icon(Icons.eco, size: 100, color: Colors.white24)),
-        ),
         Container(color: Colors.black38),
         Center(
           child: Column(
@@ -251,7 +290,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
             label: 'Gallery',
             subtitle: 'Choose a photo',
             color: Colors.blue,
-            onTap: _pickImage,
+            onTap: () => _pickImage(ImageSource.gallery),
           ),
         ),
         const SizedBox(width: 12),
@@ -261,7 +300,7 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
             label: 'Camera',
             subtitle: 'Take a photo',
             color: AppTheme.primary,
-            onTap: _pickImage,
+            onTap: () => _pickImage(ImageSource.camera),
           ),
         ),
       ],
