@@ -113,7 +113,7 @@ class _LandingScreenState extends State<LandingScreen> with TickerProviderStateM
                           width: 36, height: 36,
                           decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
                           padding: const EdgeInsets.all(4),
-                          child: ClipOval(child: Image.asset('assets/images/app_icon.png', fit: BoxFit.contain)),
+                          child: ClipOval(child: Image.asset('assets/images/logo.png', fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.eco, color: Colors.white))),
                         ),
                         const SizedBox(width: 8),
                         const Text('BananaGuard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
