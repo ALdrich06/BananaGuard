@@ -218,7 +218,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              await DatabaseService.instance.clearAllScans();
+              await DatabaseService.instance.deleteAllScans();
               Navigator.pop(context);
               _loadHistory();
             },
