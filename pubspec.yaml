@@ -1,0 +1,37 @@
+name: banana_guard
+description: Banana Leaf Disease Detection App using MobileNet
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+  google_fonts: ^6.1.0
+  lottie: ^3.0.0
+  percent_indicator: ^4.2.3
+  flutter_animate: ^4.5.0
+  cupertino_icons: ^1.0.6
+  image_picker: ^1.0.7
+  sqflite: ^2.3.2
+  path_provider: ^2.1.2
+  path: ^1.8.3
+  image: ^4.1.7
+  flutter_local_notifications: ^17.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/models/
+    - assets/animations/
